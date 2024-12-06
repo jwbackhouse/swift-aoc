@@ -11,92 +11,65 @@ struct Day03: AdventDay {
   }
 
   func calculateResult(for string: String) -> Int {
-    if let bracketIndex = string.firstIndex(of: ")") {
-      let distance = string.distance(from: string.startIndex, to: bracketIndex)
-      // discard if closing parenthensis too far away
-      if distance > 7 {
-        return 0
-      }
-
-      let substring = string[string.startIndex..<bracketIndex]
-      //        print("valid: '\(substring)'")
-
-      let commaSplit = substring.split(separator: ",")
-      // discard if no separating comma
-      if commaSplit.count != 2 {
-        return 0
-      }
-      let first = commaSplit[0]
-      let second = commaSplit[1]
-      if first.allSatisfy({ $0.isNumber })
-        && second.allSatisfy(
-          {
-            $0.isNumber
-          })
-      {
-        if let firstInt = Int(first), let secondInt = Int(second) {
-          return firstInt * secondInt
-        }
-      }
+    guard let bracketIndex = string.firstIndex(of: ")"),
+      string.distance(from: string.startIndex, to: bracketIndex) <= 7
+    else {
+      return 0
     }
-    return 0
+
+    let substring = string[string.startIndex..<bracketIndex]
+    let commaSplit = substring.split(separator: ",")
+    guard commaSplit.count == 2,
+      let firstInt = Int(commaSplit[0]),
+      let secondInt = Int(commaSplit[1])
+    else {
+      return 0
+    }
+    return firstInt * secondInt
   }
 
   func part1() -> Int {
-    let stringSplits = data.split(separator: "mul(")
-    var result = 0
-
-    for split in stringSplits {
-      result += calculateResult(for: String(split))
+    data.split(separator: "mul(").reduce(0) { result, split in
+      result + calculateResult(for: String(split))
     }
-    return result
   }
 
   func part2() -> Int {
     var remaining = data
     var isLive = true
     var result = 0
-    var count = 0
 
-    while remaining.count > 0 {
+    while !remaining.isEmpty {
+
       let mulIndex = remaining.range(of: "mul(")
       let doIndex = remaining.range(of: "do()")
       let dontIndex = remaining.range(of: "don't()")
       let swapIndex = isLive ? dontIndex : doIndex
 
-      if mulIndex != nil,
-        let swapStart = swapIndex?.lowerBound
-      {
-        let swapDistance = remaining.distance(
-          from: remaining.startIndex,
-          to: swapStart
-        )
-
-        // Bail if in a don't state
-        if !isLive {
-          remaining.removeFirst(swapDistance + 4)
-          isLive = true
-          count += 1
-          continue
-        }
-
-        let validSubString = remaining.prefix(swapDistance)
-        let stringSplits = validSubString.split(separator: "mul(")
-        for split in stringSplits {
-          result += calculateResult(for: String(split))
-        }
-        remaining.removeFirst(swapDistance + 4)
-        isLive = false
-      }
-
-      if doIndex == nil || dontIndex == nil {
-        let stringSplits = remaining.split(separator: "mul(")
-        for split in stringSplits {
-          result += calculateResult(for: String(split))
+      guard let swapStart = swapIndex?.lowerBound else {
+        result += remaining.split(separator: "mul(").reduce(0) {
+          result, split in
+          result + calculateResult(for: String(split))
         }
         break
       }
 
+      let swapDistance = remaining.distance(
+        from: remaining.startIndex,
+        to: swapStart
+      )
+
+      if isLive {
+        let validSubString = remaining.prefix(swapDistance)
+        result += validSubString.split(separator: "mul(").reduce(0) {
+          result, split in
+          result + calculateResult(for: String(split))
+        }
+      }
+      // Bail if in a don't state
+
+      remaining.removeFirst(swapDistance + 4)
+      isLive.toggle()
     }
 
     return result
