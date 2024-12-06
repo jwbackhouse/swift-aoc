@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:swift-aoc}",
+      "name": "Debug AdventOfCode",
+      "program": "${workspaceFolder:swift-aoc}/.build/debug/AdventOfCode",
+      "preLaunchTask": "swift: Build Debug AdventOfCode"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:swift-aoc}",
+      "name": "Release AdventOfCode",
+      "program": "${workspaceFolder:swift-aoc}/.build/release/AdventOfCode",
+      "preLaunchTask": "swift: Build Release AdventOfCode"
+    }
+  ]
+}
