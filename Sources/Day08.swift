@@ -1,3 +1,5 @@
+// This is the post-Claude version of the previous commit.
+
 import Algorithms
 
 struct Map {
@@ -9,16 +11,12 @@ struct Map {
   
   var lines: [String] { map }
   
-  var antennaMap: [String: [(Int, Int)]] {
-    var result: [String: [(Int, Int)]] = [:]
+  var antennaMap: [String: [Coordinate]] {
+    var result: [String: [Coordinate]] = [:]
     
     for (rowIdx, line) in map.enumerated() {
-      for (colIdx, char ) in line.enumerated() {
-        if char == "." {
-          continue
-        }
-        
-        result[String(char), default: []].append((rowIdx, colIdx))
+      for (colIdx, char ) in line.enumerated() where char != "." {
+        result[String(char), default: []].append(Coordinate(row:rowIdx, col:colIdx))
       }
     }
     
@@ -29,9 +27,18 @@ struct Map {
 struct Coordinate: Hashable {
   var row: Int
   var col: Int
+  
+  init(row: Int, col: Int) {
+    self.row = row
+    self.col = col
+  }
+  
+  func shifted(by rowOffset: Int, colOffset: Int) -> Coordinate {
+    Coordinate(row: row + rowOffset, col: col + colOffset)
+  }
 }
 
-func isWithinRange(_ coordinate: Coordinate, inMap map: Map) -> Bool {
+func isWithinRange(_ coordinate: Coordinate, in map: Map) -> Bool {
   coordinate.row >= 0 && coordinate.row < map.lines.count && coordinate.col >= 0 && coordinate.col < map.lines.first?.count ?? 0
 }
 
@@ -40,84 +47,62 @@ struct Day08: AdventDay {
   
   func part1() -> Int {
     let map = Map(data)
-    var antinodeMap: Set<Coordinate> = []
-    
-    for (_, value) in map.antennaMap {
-      let permutations = value.permutations(ofCount: 2)
-      for permutation in permutations {
-        
-        let (rowA, colA) = permutation[0]
-        let (rowB, colB) = permutation[1]
-        let rowDistance = rowA - rowB
-        let colDistance = colA - colB
-        
-        let ant1Row = rowA + rowDistance
-        let ant1Col = colA + colDistance
-        let ant2Row = rowB - rowDistance
-        let ant2Col = colB - colDistance
-        
-        if isWithinRange(Coordinate(row: ant1Row, col: ant1Col), inMap: map) {
-          antinodeMap.insert(Coordinate(row: ant1Row, col: ant1Col))
-        }
-        
-        if isWithinRange(Coordinate(row: ant2Row, col: ant2Col), inMap: map) {
-          antinodeMap.insert(Coordinate(row: ant2Row, col: ant2Col))
-        }
-      }
-    }
-    
-    print(antinodeMap)
-    return antinodeMap.count
+    return calculateAntinodes(in: map, isPropagated: false)
   }
-
+  
   func part2() -> Int {
     let map = Map(data)
-    var antinodeMap: Set<Coordinate> = []
-
+    return calculateAntinodes(in: map, isPropagated: true)
+  }
+  
+  private func calculateAntinodes(in map: Map, isPropagated: Bool) -> Int {
+    var antinodeSet: Set<Coordinate> = []
     
-    for (_, value) in map.antennaMap {
-      for (row, col) in value {
-        antinodeMap.insert(Coordinate(row: row, col: col))
-      }
-      
-      let permutations = value.permutations(ofCount: 2)
-      for permutation in permutations {
+    for (_, coordinates) in map.antennaMap {
+      for pair in coordinates.permutations(ofCount: 2) {
+        let (coordA, coordB) = (pair[0], pair[1])
+        let rowDistance = coordA.row - coordB.row
+        let colDistance = coordA.col - coordB.col
         
-        let (rowA, colA) = permutation[0]
-        let (rowB, colB) = permutation[1]
-        let rowDistance = rowA - rowB
-        let colDistance = colA - colB
+        processAntinode(
+          startingAt: coordA
+            .shifted(by: rowDistance, colOffset: colDistance),
+          rowDistance: rowDistance,
+          colDistance: colDistance,
+          map: map,
+          into: &antinodeSet,
+          isPropagated: isPropagated
+        )
         
-        let ant1Row = rowA + rowDistance
-        let ant1Col = colA + colDistance
-        let ant2Row = rowB - rowDistance
-        let ant2Col = colB - colDistance
-        
-        let ant1Coordinate = Coordinate(row: ant1Row, col: ant1Col)
-        if isWithinRange(ant1Coordinate, inMap: map) {
-          
-          var newCoordinate = ant1Coordinate
-          while isWithinRange(newCoordinate, inMap: map) {
-            antinodeMap.insert(newCoordinate)
-            newCoordinate.row += rowDistance
-            newCoordinate.col += colDistance
-          }
-        }
-        
-        let ant2Coordinate = Coordinate(row: ant2Row, col: ant2Col)
-        if isWithinRange(ant2Coordinate, inMap: map) {
-          antinodeMap.insert(ant2Coordinate)
-          
-          var newCoordinate = ant2Coordinate
-          while isWithinRange(newCoordinate, inMap: map) {
-            antinodeMap.insert(newCoordinate)
-            newCoordinate.row -= rowDistance
-            newCoordinate.col -= colDistance
-          }
-        }
+        processAntinode(
+          startingAt: coordB
+            .shifted(by: -rowDistance, colOffset: -colDistance),
+          rowDistance: rowDistance,
+          colDistance: colDistance,
+          map: map,
+          into: &antinodeSet,
+          isPropagated: isPropagated
+        )
       }
     }
     
-    return antinodeMap.count
+    return antinodeSet.count
   }
+  
+  private func processAntinode(
+    startingAt coordinate: Coordinate,
+    rowDistance: Int,
+    colDistance: Int,
+    map: Map,
+    into antinodeSet: inout Set<Coordinate>,
+    isPropagated: Bool
+  ) {
+    var current = coordinate
+    while isWithinRange(current, in: map) {
+      antinodeSet.insert(current)
+      if !isPropagated {break}
+      current = current.shifted(by: rowDistance, colOffset: colDistance)
+    }
+  }
+  
 }
